@@ -2,6 +2,19 @@
 some random functions/classes which serve a utilitarian purpose in multiple projects
 PS: Hierarchy of Classes will change as I add more utilities 
 
+## Installing
+* From PyPI
+```sh
+pip install pycasper
+```
+
+* From Source
+```sh
+git clone https://github.com/chahuja/pycasper.git
+cd pycasper
+python setup.py install
+```
+
 ## ProtoTyping 
 ### Name (When finding unique names becomes a bigger task than the task itself)
 * Based on a Namespace of arguments and its values, `Name` creates a unique name.
