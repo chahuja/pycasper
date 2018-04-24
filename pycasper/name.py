@@ -29,7 +29,8 @@ class Name(object):
     args_subset = list(args_subset)
 
     ## if args_subset is not provided take all the keys from args_dict
-    args_subset = list(args_dict.keys())
+    if not args_subset:
+      args_subset = list(args_dict.keys())
     
     ## if args_subset is derived from an example name
     for i, arg_sub in enumerate(args_subset):
