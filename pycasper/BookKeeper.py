@@ -1,11 +1,12 @@
 import pickle as pkl
 import json
 import os
-import ipdb
 from datetime import datetime
 from tqdm import tqdm
 import copy
 import numpy as np
+
+from tensorboardX import SummaryWriter
 
 from pycasper.name import Name
 
@@ -22,6 +23,17 @@ def save_grads(val, file_path):
 def load_grads(file_path):
   return pkl.load(open(file_path))
 
+class TensorboardWrapper():
+  '''
+  Wrapper to add values to tensorboard using a dictionary of values
+  '''
+  def __init__(self, log_dir):
+    self.writer = SummaryWriter(log_dir=log_dir)
+
+  def __call__(self, write_dict):
+    for key in write_dict:
+      for value in write_dict[key]:
+        getattr(self.writer, 'add_' + key)(*value)
 
 class BookKeeper():
   '''BookKeeper
@@ -36,7 +48,8 @@ class BookKeeper():
                res_ext='res.json',
                log_ext='log.log',
                args_dict_update = {},
-               res = {'train':[], 'dev':[], 'test':[]}):
+               res = {'train':[], 'dev':[], 'test':[]},
+               tensorboard = True):
 
     self.args = args
     self.args_subset = args_subset
@@ -46,7 +59,7 @@ class BookKeeper():
     self.weights_ext = weights_ext.split('.')
     self.res_ext = res_ext.split('.')
     self.log_ext = log_ext.split('.')
-
+    
     ## params for saving/notSaving models
     self.best_dev_score = np.inf
     self.stop_count = 0
@@ -81,6 +94,12 @@ class BookKeeper():
       ## init empty results
       self.res = res
 
+    ## Tensorboard TODO give user the option to choose the log_dir
+    if tensorboard:
+      self.tensorboard = TensorboardWrapper(log_dir='runs/' + self.name.name+'tb')
+    else:
+      self.tensorboard = None
+      
   def _load_name(self):
     name_filepath = '_'.join(self.args.load.split('_')[:-1] + ['.'.join(self.name_ext)])
     return pkl.load(open(name_filepath, 'rb'))
@@ -101,6 +120,12 @@ class BookKeeper():
   def update_res(self, res):
     for key in res:
       self.res[key].append(res[key])
+
+  def update_tb(self, write_dict):
+    if self.tensorboard:
+      self.tensorboard(write_dict)
+    else:
+      warnings.warn('TensorboardWrapper not declared')
 
   def print_res(self, epoch, key_order=['train', 'dev', 'test'], exp=0):
     print_str = ', '.join(["exp: {}, epch: {}"] + ["{}: {}".format(key,{}) for key in key_order])
@@ -129,14 +154,14 @@ class BookKeeper():
     weights_path = self.name(self.weights_ext[0], self.weights_ext[1], self.save_dir)
     model.load_state_dict(pkl.load(open(weights_path, 'rb')))
     
-  def _save_model(self, model):
+  def _save_model(self, model_state_dict):
     weights_path = self.name(self.weights_ext[0], self.weights_ext[1], self.save_dir)
     f = open(weights_path, 'wb') 
-    pkl.dump(model.state_dict(), f)
+    pkl.dump(model_state_dict, f)
     f.close()
 
   def _copy_best_model(self, model):
-    self.best_model = copy.deepcopy(model).cpu()
+    self.best_model = copy.deepcopy(model.state_dict())
     
   def _start_log(self):
     with open(self.name(self.log_ext[0],self.log_ext[1], self.save_dir), 'w') as f:

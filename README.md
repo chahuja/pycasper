@@ -21,5 +21,9 @@ python setup.py install
 * If all arguments are too much for the length of the name, it is possible to provide a subset of those arguments
 * Read more in the docfile of the class Name
 
+### BookKeeper
+* Logging routine for deep learning
+* Requires tensorflow, tensorboardX and pytorch
+
 ## Results
 * Coming soon...

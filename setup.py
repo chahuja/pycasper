@@ -4,7 +4,7 @@ from os import path
 
 setup(
   name='PyCasper',
-  version='0.1.1.dev3',
+  version='0.1.1.dev4',
   url='https://github.com/chahuja/pycasper',
   author='Chaitanya Ahuja',
   author_email='ahujachaitanya@gmail.com',
