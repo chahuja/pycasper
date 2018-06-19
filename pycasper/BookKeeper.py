@@ -5,6 +5,7 @@ from datetime import datetime
 from tqdm import tqdm
 import copy
 import numpy as np
+from pathlib import Path
 
 from tensorboardX import SummaryWriter
 
@@ -38,6 +39,7 @@ class TensorboardWrapper():
 
 class BookKeeper():
   '''BookKeeper
+  TODO: add documentation
   TODO: add save_optimizer_args as well
   TODO: choice of score kind to decide early-stopping
   '''
@@ -49,7 +51,7 @@ class BookKeeper():
                log_ext='log.log',
                args_dict_update = {},
                res = {'train':[], 'dev':[], 'test':[]},
-               tensorboard = True):
+               tensorboard = None):
 
     self.args = args
     self.args_subset = args_subset
@@ -94,9 +96,9 @@ class BookKeeper():
       ## init empty results
       self.res = res
 
-    ## Tensorboard TODO give user the option to choose the log_dir
+    ## Tensorboard 
     if tensorboard:
-      self.tensorboard = TensorboardWrapper(log_dir='runs/' + self.name.name+'tb')
+      self.tensorboard = TensorboardWrapper(log_dir=(Path(tensorboard)/Path(self.name.name+'tb')).as_posix())
     else:
       self.tensorboard = None
       
