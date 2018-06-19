@@ -28,18 +28,18 @@ class TensorboardWrapper():
   Wrapper to add values to tensorboard using a dictionary of values
   '''
   def __init__(self, log_dir):
-    self.writer = SummaryWriter(log_dir=log_dir)
+    self.log_dir = log_dir
 
-  def __call__(self, write_dict):
-    for key in write_dict:
-      for value in write_dict[key]:
-        getattr(self.writer, 'add_' + key)(*value)
+  def __call__(self, write_dict, comment='NA'):
+    with SummaryWriter(log_dir=self.log_dir, comment=comment) as writer:
+      for key in write_dict:
+        for value in write_dict[key]:
+          getattr(writer, 'add_' + key)(*value)
 
 class BookKeeper():
   '''BookKeeper
   TODO: add save_optimizer_args as well
   TODO: choice of score kind to decide early-stopping
-  TODO: add tensorboard support as well
   '''
   def __init__(self, args, args_subset,
                args_ext= 'args.args',
