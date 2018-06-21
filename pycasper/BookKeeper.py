@@ -8,6 +8,7 @@ import numpy as np
 from pathlib import Path
 
 from tensorboardX import SummaryWriter
+import torch
 
 from pycasper.name import Name
 
@@ -41,7 +42,18 @@ class BookKeeper():
   '''BookKeeper
   TODO: add documentation
   TODO: add save_optimizer_args as well
-  TODO: choice of score kind to decide early-stopping
+  TODO: choice of score kind to decide early-stopping (currently dev is default)
+  Required properties in args
+  - load
+  - seed
+  - save_dir
+  - num_epochs
+  - cuda
+  - save_model
+  - greedy_save
+  - stop_thresh
+  - eps
+  - early stopping
   '''
   def __init__(self, args, args_subset,
                args_ext= 'args.args',
@@ -101,6 +113,10 @@ class BookKeeper():
       self.tensorboard = TensorboardWrapper(log_dir=(Path(tensorboard)/Path(self.name.name+'tb')).as_posix())
     else:
       self.tensorboard = None
+
+    ## seed numpy and torch
+    torch.random.manual_seed(args.seed)
+    np.random.seed(args.seed)
       
   def _load_name(self):
     name_filepath = '_'.join(self.args.load.split('_')[:-1] + ['.'.join(self.name_ext)])
@@ -205,6 +221,7 @@ class BookKeeper():
       ## save the best model now
       if self.args.save_model:
         print('Saving Model by early stopping')
+        pdb.set_trace()
         self._save_model(self.best_model)
       return True
 
