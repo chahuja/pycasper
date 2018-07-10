@@ -6,11 +6,13 @@ from tqdm import tqdm
 import copy
 import numpy as np
 from pathlib import Path
+import warnings
 
 from tensorboardX import SummaryWriter
 import torch
 
 from pycasper.name import Name
+import pdb
 
 def accumulate_grads(model, grads_list):
   if grads_list:
@@ -81,11 +83,11 @@ class BookKeeper():
     if self.args.load:
       if os.path.isfile(self.args.load):
         ## update the save_dir if the files have moved
-        self.save_dir = '/'.join(args.load.split('/')[:-1])
+        self.save_dir = Path(args.load).parent.as_posix()
 
         ## load Name
         self.name = self._load_name()
-        
+
         ## load args
         self._load_args(args_dict_update)
         
@@ -93,7 +95,11 @@ class BookKeeper():
       self._save_args()
 
       ## load results
-      self.res = self._load_res()
+      try:
+        self.res = self._load_res()
+      except:
+        warnings.warn('Counld not find results file')
+        self.res = res
 
     else:
       self.save_dir = args.save_dir
@@ -117,7 +123,8 @@ class BookKeeper():
     ## seed numpy and torch
     torch.random.manual_seed(args.seed)
     np.random.seed(args.seed)
-      
+    torch.cuda.manual_seed_all(args.seed)
+    
   def _load_name(self):
     name_filepath = '_'.join(self.args.load.split('_')[:-1] + ['.'.join(self.name_ext)])
     return pkl.load(open(name_filepath, 'rb'))
@@ -221,7 +228,6 @@ class BookKeeper():
       ## save the best model now
       if self.args.save_model:
         print('Saving Model by early stopping')
-        pdb.set_trace()
         self._save_model(self.best_model)
       return True
 
