@@ -102,6 +102,26 @@ class BookKeeper():
         self.res = res
 
     else:
+      ## update the experiment number
+      if self.args.exp is not None:
+        exp = 0
+        exp_file = '.experiments'
+        if not os.path.exists(exp_file):
+          with open(exp_file, 'w') as f:
+            f.writelines([f'{exp}\n'])
+        else:
+          with open(exp_file, 'r') as f:
+            lines = f.readlines()
+            exp = int(lines[0].strip())
+          exp += 1
+          with open(exp_file, 'w') as f:
+            f.writelines([f'{exp}\n'])
+
+      else:
+        exp = 0
+      print(f'Experiment Number: {exp}')
+      self.args.__dict__.update({'exp':exp})
+      
       self.save_dir = args.save_dir
       self.name = Name(self.args, *self.args_subset)
 
@@ -116,7 +136,7 @@ class BookKeeper():
 
     ## Tensorboard 
     if tensorboard:
-      self.tensorboard = TensorboardWrapper(log_dir=(Path(tensorboard)/Path(self.name.name+'tb')).as_posix())
+      self.tensorboard = TensorboardWrapper(log_dir=(Path(self.save_dir)/Path(self.name.name+'tb')).as_posix())
     else:
       self.tensorboard = None
 
