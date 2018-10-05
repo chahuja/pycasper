@@ -33,12 +33,12 @@ class TensorboardWrapper():
   '''
   def __init__(self, log_dir):
     self.log_dir = log_dir
-
-  def __call__(self, write_dict, comment='NA'):
-    with SummaryWriter(log_dir=self.log_dir, comment=comment) as writer:
+    self.writer = SummaryWriter(log_dir=self.log_dir, comment='NA')
+    
+  def __call__(self, write_dict):
       for key in write_dict:
         for value in write_dict[key]:
-          getattr(writer, 'add_' + key)(*value)
+          getattr(self.writer, 'add_' + key)(*value)
 
 class BookKeeper():
   '''BookKeeper
@@ -140,6 +140,10 @@ class BookKeeper():
     else:
       self.tensorboard = None
 
+    self._set_seed(args)
+
+  @staticmethod
+  def _set_seed(args):
     ## seed numpy and torch
     torch.random.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -172,10 +176,12 @@ class BookKeeper():
     else:
       warnings.warn('TensorboardWrapper not declared')
 
-  def print_res(self, epoch, key_order=['train', 'dev', 'test'], exp=0):
-    print_str = ', '.join(["exp: {}, epch: {}"] + ["{}: {}".format(key,{}) for key in key_order])
+  def print_res(self, epoch, key_order=['train', 'dev', 'test'], exp=0, lr=None):
+    print_str = ', '.join(["exp: {}, epch: {}, lr:{}, "] + ["{}: {}".format(key,{}) for key in key_order])
     result_list = [self.res[key][-1] for key in key_order]
-    tqdm.write(print_str.format(exp, epoch, *result_list))
+    if isinstance(lr, list):
+      lr = lr[0]
+    tqdm.write(print_str.format(exp, epoch, lr, *result_list))
 
   def _load_args(self, args_dict_update):
     args_filepath = self.name(self.args_ext[0], self.args_ext[1], self.save_dir)
