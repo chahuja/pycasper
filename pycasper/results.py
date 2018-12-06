@@ -15,8 +15,8 @@ walkthroughResults
          must be present in the `result file` and `res_subset`
 """
 def walkthroughResults(path, args_subset=None, 
-                       res_subset=['train', 'dev', 'test'], 
-                       val_key='dev'):
+                       res_subset=['train', 'val', 'test'], 
+                       val_key='val'):
   ## discover args columns of a table
   for tup in os.walk(path):
     for fname in tup[2]:
@@ -34,6 +34,7 @@ def walkthroughResults(path, args_subset=None,
         ## assign [] to all args in args_subset
         best_df_dict = dict([(arg, []) for arg in args_subset])
         all_df_dict = dict([(arg, []) for arg in args_subset])
+        
         break
     else:
       continue
@@ -65,6 +66,10 @@ def walkthroughResults(path, args_subset=None,
   ## add epoch to both the dictionaries
   best_df_dict.update({'epoch':[]})
   all_df_dict.update({'epoch':[]})
+
+  ## add name to both dictionaries
+  best_df_dict.update({'name':[]})
+  all_df_dict.update({'name':[]})  
   
   for tup in os.walk(path):
     for fname in tup[2]:
@@ -73,6 +78,7 @@ def walkthroughResults(path, args_subset=None,
         res = json.load(open(os.path.join(tup[0],fname)))
 
         ## load args
+        name = '_'.join(fname.split('.')[0].split('_')[:-1])
         args_path = '_'.join(fname.split('.')[0].split('_')[:-1] + ['args.args'])
         args = json.load(open(os.path.join(tup[0], args_path)))
 
@@ -87,17 +93,21 @@ def walkthroughResults(path, args_subset=None,
         ## add loss values to df_dict
         for r in res_subset:
           best_df_dict[r].append(res.get(r)[min_index])
-          all_df_dict[r].append(res.get(r)[:min_index+1])
+          all_df_dict[r].append(res.get(r))
 
         ## add num_epochs to train to df_dict
         best_df_dict['epoch'].append(min_index+1)
         all_df_dict['epoch'].append(min_index+1)
 
+        ## add name to dict
+        best_df_dict['name'].append(name)
+        all_df_dict['name'].append(name)
+
   ## Convert dictionary of results to a dataframe
   best_df = pd.DataFrame(best_df_dict)
   all_df = pd.DataFrame(all_df_dict)
-  best_df = best_df[list(args_subset) + ['epoch'] + list(res_subset)]
-  all_df = all_df[list(args_subset) + ['epoch'] + list(res_subset)]
+  best_df = best_df[['name'] + list(args_subset) + ['epoch'] + list(res_subset)]
+  all_df = all_df[['name'] + list(args_subset) + ['epoch'] + list(res_subset)]
   return best_df, all_df
 
 
@@ -108,4 +118,4 @@ def walkthroughModels(path):
       if fname.split('_')[-1] == 'weights.p':
         model_paths.append(os.path.join(tup[0], fname))
 
-  return model_paths              
+  return model_paths
