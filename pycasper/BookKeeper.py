@@ -42,6 +42,9 @@ class TensorboardWrapper():
 
 class BookKeeper():
   '''BookKeeper
+  if load_pretrained_model = True
+  bookKeeper will not update args and will also call _new_exp
+
   TODO: add documentation
   TODO: add save_optimizer_args as well
   TODO: choice of score kind to decide early-stopping (currently dev is default)
@@ -65,7 +68,8 @@ class BookKeeper():
                log_ext='log.log',
                args_dict_update = {},
                res = {'train':[], 'dev':[], 'test':[]},
-               tensorboard = None):
+               tensorboard = None,
+               load_pretrained_model=False):
 
     self.args = args
     self.args_subset = args_subset
@@ -79,6 +83,10 @@ class BookKeeper():
     ## params for saving/notSaving models
     self.best_dev_score = np.inf
     self.stop_count = 0
+
+    ## init empty results
+    self.res = res
+    self.load_pretrained_model = load_pretrained_model
     
     if self.args.load:
       if os.path.isfile(self.args.load):
@@ -90,9 +98,10 @@ class BookKeeper():
 
         ## load args
         self._load_args(args_dict_update)
-        
-      ## Serialize and save args
-      self._save_args()
+
+      if not self.load_pretrained_model:
+        ## Serialize and save args
+        self._save_args()
 
       ## load results
       try:
@@ -102,37 +111,11 @@ class BookKeeper():
         self.res = res
 
     else:
-      ## update the experiment number
-      if self.args.exp is not None:
-        exp = 0
-        exp_file = '.experiments'
-        if not os.path.exists(exp_file):
-          with open(exp_file, 'w') as f:
-            f.writelines([f'{exp}\n'])
-        else:
-          with open(exp_file, 'r') as f:
-            lines = f.readlines()
-            exp = int(lines[0].strip())
-          exp += 1
-          with open(exp_file, 'w') as f:
-            f.writelines([f'{exp}\n'])
+      ## run a new experiment
+      self._new_exp()
 
-      else:
-        exp = 0
-      print(f'Experiment Number: {exp}')
-      self.args.__dict__.update({'exp':exp})
-      
-      self.save_dir = args.save_dir
-      self.name = Name(self.args, *self.args_subset)
-
-      ## save name
-      self._save_name()
-
-      ## Serialize and save args
-      self._save_args()
-
-      ## init empty results
-      self.res = res
+    if self.load_pretrained_model:
+      self._new_exp()
 
     ## Tensorboard 
     if tensorboard:
@@ -148,6 +131,41 @@ class BookKeeper():
     torch.random.manual_seed(args.seed)
     np.random.seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
+
+  '''
+  Stuff to do for a new experiment
+  '''
+  def _new_exp(self):
+    ## update the experiment number
+    self._update_exp()
+
+    self.save_dir = self.args.save_dir
+    self.name = Name(self.args, *self.args_subset)
+
+    ## save name
+    self._save_name()
+
+    ## Serialize and save args
+    self._save_args()
+    
+  def _update_exp(self):
+    if self.args.exp is not None:
+      exp = 0
+      exp_file = '.experiments'
+      if not os.path.exists(exp_file):
+        with open(exp_file, 'w') as f:
+          f.writelines([f'{exp}\n'])
+      else:
+        with open(exp_file, 'r') as f:
+          lines = f.readlines()
+          exp = int(lines[0].strip())
+        exp += 1
+        with open(exp_file, 'w') as f:
+          f.writelines([f'{exp}\n'])
+    else:
+      exp = 0
+    print(f'Experiment Number: {exp}')
+    self.args.__dict__.update({'exp':exp})
     
   def _load_name(self):
     name_filepath = '_'.join(self.args.load.split('_')[:-1] + ['.'.join(self.name_ext)])
