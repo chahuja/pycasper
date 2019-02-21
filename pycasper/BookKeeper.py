@@ -187,13 +187,12 @@ class BookKeeper():
     args_filepath = self.name(self.args_ext[0], self.args_ext[1], self.save_dir)
     if os.path.isfile(args_filepath):
       args_dict = json.load(open(args_filepath))
-      ## any new argument to be updated
-      args_dict.update(args_dict_update)
-
       ## update load path and cuda device to use
       args_dict.update({'load':self.args.load,
                         'cuda':self.args.cuda,
                         'save_dir':self.save_dir})
+      ## any new argument to be updated
+      args_dict.update(args_dict_update)
 
       self.args.__dict__.update(args_dict)
 
