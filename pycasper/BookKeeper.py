@@ -147,6 +147,9 @@ class BookKeeper():
 
     ## Serialize and save args
     self._save_args()
+
+    ## reinitialize results to empty
+    self.res = {key:[] for key in self.res}
     
   def _update_exp(self):
     if self.args.exp is not None:
