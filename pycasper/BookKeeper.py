@@ -33,7 +33,7 @@ class TensorboardWrapper():
   '''
   def __init__(self, log_dir):
     self.log_dir = log_dir
-    self.writer = SummaryWriter(log_dir=self.log_dir, comment='NA')
+    self.writer = SummaryWriter(logdir=self.log_dir, comment='NA')
     
   def __call__(self, write_dict):
       for key in write_dict:
@@ -99,9 +99,9 @@ class BookKeeper():
         ## load args
         self._load_args(args_dict_update)
 
-      if not self.load_pretrained_model:
-        ## Serialize and save args
-        self._save_args()
+      # if not self.load_pretrained_model:
+      #   ## Serialize and save args
+      #   self._save_args()
 
       ## load results
       try:
@@ -239,7 +239,7 @@ class BookKeeper():
       f.write("S: {}\n".format(str(datetime.now())))
     
   def _stop_log(self):
-    with open(self.name(self.log_ext[0],self.log_ext[1], self.save_dir), 'w') as f:
+    with open(self.name(self.log_ext[0],self.log_ext[1], self.save_dir), 'a') as f:
       f.write("E: {}\n".format(str(datetime.now())))
 
   def stop_training(self, model, epoch):
