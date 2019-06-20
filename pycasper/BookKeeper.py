@@ -224,6 +224,11 @@ class BookKeeper():
   def _load_model(self, model):
     weights_path = self.name(self.weights_ext[0], self.weights_ext[1], self.save_dir)
     model.load_state_dict(pkl.load(open(weights_path, 'rb')))
+
+  @staticmethod
+  def load_pretrained_model(model, path2model):
+    model.load_state_dict(pkl.load(open(path2model, 'rb')))
+    return model
     
   def _save_model(self, model_state_dict):
     weights_path = self.name(self.weights_ext[0], self.weights_ext[1], self.save_dir)
@@ -232,7 +237,10 @@ class BookKeeper():
     f.close()
 
   def _copy_best_model(self, model):
-    self.best_model = copy.deepcopy(model.state_dict())
+    if isinstance(model, torch.nn.DataParallel):
+      self.best_model = copy.deepcopy(model.module.state_dict())
+    else:
+      self.best_model = copy.deepcopy(model.state_dict())
     
   def _start_log(self):
     with open(self.name(self.log_ext[0],self.log_ext[1], self.save_dir), 'w') as f:
