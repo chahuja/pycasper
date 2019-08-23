@@ -8,7 +8,7 @@ import numpy as np
 from pathlib import Path
 import warnings
 
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 import torch
 
 from pycasper.name import Name
@@ -33,7 +33,7 @@ class TensorboardWrapper():
   '''
   def __init__(self, log_dir):
     self.log_dir = log_dir
-    self.writer = SummaryWriter(logdir=self.log_dir, comment='NA')
+    self.writer = SummaryWriter(log_dir=self.log_dir, comment='NA')
     
   def __call__(self, write_dict):
       for key in write_dict:
@@ -61,14 +61,14 @@ class BookKeeper():
   - early stopping
   '''
   def __init__(self, args, args_subset,
-               args_ext= 'args.args',
+               args_ext='args.args',
                name_ext='name.name',
-               weights_ext = 'weights.p',
+               weights_ext='weights.p',
                res_ext='res.json',
                log_ext='log.log',
-               args_dict_update = {},
-               res = {'train':[], 'dev':[], 'test':[]},
-               tensorboard = None,
+               args_dict_update={},
+               res={'train':[], 'dev':[], 'test':[]},
+               tensorboard=None,
                load_pretrained_model=False):
 
     self.args = args
@@ -86,6 +86,12 @@ class BookKeeper():
 
     ## init empty results
     self.res = res
+    if 'dev_key' in args:
+      self.dev_key = args.dev_key
+      self.dev_sign = args.dev_sign
+    else:
+      self.dev_key = 'dev'
+      self.dev_sign = 1
     self.load_pretrained_model = load_pretrained_model
     
     if self.args.load:
@@ -104,11 +110,7 @@ class BookKeeper():
       #   self._save_args()
 
       ## load results
-      try:
-        self.res = self._load_res()
-      except:
-        warnings.warn('Counld not find results file')
-        self.res = res
+      self.res = self._load_res()
 
     else:
       ## run a new experiment
@@ -181,7 +183,11 @@ class BookKeeper():
   def _load_res(self):
     print('Loading results')
     res_filepath = self.name(self.res_ext[0], self.res_ext[1], self.save_dir)
-    return json.load(open(res_filepath))
+    if os.path.exists(res_filepath):
+      return json.load(open(res_filepath))
+    else:
+      warnings.warn('Counld not find results file')
+      return self.res
 
   def _save_res(self):
     res_filepath = self.name(self.res_ext[0], self.res_ext[1], self.save_dir)
@@ -189,7 +195,10 @@ class BookKeeper():
 
   def update_res(self, res):
     for key in res:
-      self.res[key].append(res[key])
+      if key in self.res:
+        self.res[key].append(res[key])
+      else:
+        self.res[key] = [res[key]]
 
   def update_tb(self, write_dict):
     if self.tensorboard:
@@ -252,13 +261,13 @@ class BookKeeper():
 
   def stop_training(self, model, epoch):
     ## copy the best model
-    if self.res['dev'][-1]<self.best_dev_score:
+    if self.dev_sign * self.res[self.dev_key][-1]<self.best_dev_score:
       if self.args.greedy_save:
         save_flag = True
       else:
         save_flag=False
       self._copy_best_model(model)
-      self.best_dev_score = self.res['dev'][-1]
+      self.best_dev_score = self.res[self.dev_key][-1]
     else:
       save_flag = False
 
@@ -266,13 +275,17 @@ class BookKeeper():
     if not self.args.save_model:
       save_flag = False
 
+    if self.args.overfit:
+      self._copy_best_model(model)    
+      save_flag = True
+
     if save_flag:
       tqdm.write('Saving Model')
       self._save_model(self.best_model)
 
     ## early_stopping
-    if self.args.early_stopping and len(self.res['train'])>=2:
-      if (self.res['dev'][-2] - self.args.eps < self.res['dev'][-1]):
+    if self.args.early_stopping and len(self.res['train'])>=2 and not self.args.overfit:
+      if (self.dev_sign*(self.res[self.dev_key][-2] - self.args.eps) < self.dev_sign*self.res[self.dev_key][-1]):
         self.stop_count += 1
       else:
         self.stop_count = 0
