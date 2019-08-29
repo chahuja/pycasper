@@ -92,7 +92,10 @@ def walkthroughResults(path, args_subset=None,
 
         ## add loss values to df_dict
         for r in res_subset:
-          best_df_dict[r].append(res.get(r)[min_index])
+          if res.get(r):
+            best_df_dict[r].append(res.get(r)[min_index])
+          else:
+            best_df_dict[r].append(None)
           all_df_dict[r].append(res.get(r))
 
         ## add num_epochs to train to df_dict
