@@ -6,12 +6,17 @@ from tqdm import tqdm
 import copy
 import numpy as np
 from pathlib import Path
+import argparse
 import warnings
 
 from torch.utils.tensorboard import SummaryWriter
 import torch
 
-from pycasper.name import Name
+try:
+  from pycasper.name import Name
+except: ## only for unittest
+  from name import Name
+  
 import pdb
 
 def accumulate_grads(model, grads_list):
@@ -81,7 +86,6 @@ class BookKeeper():
     self.log_ext = log_ext.split('.')
     
     ## params for saving/notSaving models
-    self.best_dev_score = np.inf
     self.stop_count = 0
 
     ## init empty results
@@ -92,6 +96,8 @@ class BookKeeper():
     else:
       self.dev_key = 'dev'
       self.dev_sign = 1
+    self.best_dev_score = np.inf * self.dev_sign
+    
     self.load_pretrained_model = load_pretrained_model
     
     if self.args.load:
@@ -181,9 +187,9 @@ class BookKeeper():
     pkl.dump(self.name, open(name_filepath, 'wb'))
 
   def _load_res(self):
-    print('Loading results')
     res_filepath = self.name(self.res_ext[0], self.res_ext[1], self.save_dir)
     if os.path.exists(res_filepath):
+      print('Results Loaded')
       return json.load(open(res_filepath))
     else:
       warnings.warn('Counld not find results file')
@@ -206,8 +212,8 @@ class BookKeeper():
     else:
       warnings.warn('TensorboardWrapper not declared')
 
-  def print_res(self, epoch, key_order=['train', 'dev', 'test'], exp=0, lr=None):
-    print_str = ', '.join(["exp: {}, epch: {}, lr:{}, "] + ["{}: {}".format(key,{}) for key in key_order])
+  def print_res(self, epoch, key_order=['train', 'dev', 'test'], exp=0, lr=None, fmt='{:.4f}'):
+    print_str = ', '.join(["exp: {}, epch: {}, lr:{}, "] + ["{}: {}".format(key,fmt) for key in key_order])
     result_list = [self.res[key][-1] for key in key_order]
     if isinstance(lr, list):
       lr = lr[0]
@@ -232,7 +238,10 @@ class BookKeeper():
 
   def _load_model(self, model):
     weights_path = self.name(self.weights_ext[0], self.weights_ext[1], self.save_dir)
-    model.load_state_dict(pkl.load(open(weights_path, 'rb')))
+    if isinstance(model, torch.nn.DataParallel):
+      model.module.load_state_dict(pkl.load(open(weights_path, 'rb')))
+    else:
+      model.load_state_dict(pkl.load(open(weights_path, 'rb')))
 
   @staticmethod
   def load_pretrained_model(model, path2model):
@@ -261,7 +270,7 @@ class BookKeeper():
 
   def stop_training(self, model, epoch):
     ## copy the best model
-    if self.dev_sign * self.res[self.dev_key][-1]<self.best_dev_score:
+    if self.dev_sign * self.res[self.dev_key][-1] < self.dev_sign * self.best_dev_score:
       if self.args.greedy_save:
         save_flag = True
       else:
@@ -285,7 +294,7 @@ class BookKeeper():
 
     ## early_stopping
     if self.args.early_stopping and len(self.res['train'])>=2 and not self.args.overfit:
-      if (self.dev_sign*(self.res[self.dev_key][-2] - self.args.eps) < self.dev_sign*self.res[self.dev_key][-1]):
+      if (self.dev_sign*(self.res[self.dev_key][-2] - self.args.eps) < self.dev_sign * self.res[self.dev_key][-1]):
         self.stop_count += 1
       else:
         self.stop_count = 0
