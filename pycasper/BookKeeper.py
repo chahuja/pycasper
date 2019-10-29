@@ -131,14 +131,13 @@ class BookKeeper():
     else:
       self.tensorboard = None
 
-    self._set_seed(args)
+    self._set_seed()
 
-  @staticmethod
-  def _set_seed(args):
+  def _set_seed(self):
     ## seed numpy and torch
-    torch.random.manual_seed(args.seed)
-    np.random.seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
+    torch.random.manual_seed(self.args.seed)
+    np.random.seed(self.args.seed)
+    torch.cuda.manual_seed_all(self.args.seed)
 
   '''
   Stuff to do for a new experiment
