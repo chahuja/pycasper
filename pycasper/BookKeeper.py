@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 from tqdm import tqdm
 import copy
+import random
 import numpy as np
 from pathlib import Path
 import argparse
@@ -135,10 +136,15 @@ class BookKeeper():
 
   def _set_seed(self):
     ## seed numpy and torch
-    torch.random.manual_seed(self.args.seed)
+    random.seed(self.args.seed)
     np.random.seed(self.args.seed)
+    torch.manual_seed(self.args.seed)
     torch.cuda.manual_seed_all(self.args.seed)
+    torch.cuda.manual_seed(self.args.seed)
+    #torch.backends.cudnn.deterministic = True
+    #torch.backends.cudnn.benchmark = False
 
+    
   '''
   Stuff to do for a new experiment
   '''
