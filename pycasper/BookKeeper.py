@@ -10,6 +10,8 @@ from pathlib import Path
 import argparse
 import warnings
 
+from prettytable import PrettyTable
+
 from torch.utils.tensorboard import SummaryWriter
 import torch
 
@@ -79,6 +81,7 @@ class BookKeeper():
 
     self.args = args
     self.args_subset = args_subset
+    self.args_dict_update = args_dict_update
     
     self.args_ext = args_ext.split('.')
     self.name_ext = name_ext.split('.')
@@ -143,7 +146,6 @@ class BookKeeper():
     torch.cuda.manual_seed(self.args.seed)
     #torch.backends.cudnn.deterministic = True
     #torch.backends.cudnn.benchmark = False
-
     
   '''
   Stuff to do for a new experiment
@@ -158,6 +160,9 @@ class BookKeeper():
     ## save name
     self._save_name()
 
+    ## update args
+    self.args.__dict__.update(self.args_dict_update)
+    
     ## Serialize and save args
     self._save_args()
 
@@ -217,7 +222,21 @@ class BookKeeper():
     else:
       warnings.warn('TensorboardWrapper not declared')
 
-  def print_res(self, epoch, key_order=['train', 'dev', 'test'], exp=0, lr=None, fmt='{:.4f}'):
+  def print_res(self, epoch, key_order=['train', 'dev', 'test'], metric_order=[], exp=0, lr=None, fmt='{:.4f}'):
+    print_str = "exp: {}, epch: {}, lr:{}"
+    table = PrettyTable([''] + key_order)
+    table_str = ['loss'] + [fmt.format(self.res[key][-1]) for key in key_order] ## loss
+    table.add_row(table_str)
+    for metric in metric_order:
+      table_str = [metric] + [fmt.format(self.res['{}_{}'.format(key, metric)][-1]) for key in key_order]
+      table.add_row(table_str)
+    
+    if isinstance(lr, list):
+      lr = lr[0]
+    tqdm.write(print_str.format(exp, epoch, lr))
+    tqdm.write(table.__str__())
+
+  def print_res_archive(self, epoch, key_order=['train', 'dev', 'test'], exp=0, lr=None, fmt='{:.4f}'):
     print_str = ', '.join(["exp: {}, epch: {}, lr:{}, "] + ["{}: {}".format(key,fmt) for key in key_order])
     result_list = [self.res[key][-1] for key in key_order]
     if isinstance(lr, list):
@@ -270,12 +289,18 @@ class BookKeeper():
       f.write("S: {}\n".format(str(datetime.now())))
     
   def _stop_log(self):
-    with open(self.name(self.log_ext[0],self.log_ext[1], self.save_dir), 'a') as f:
-      f.write("E: {}\n".format(str(datetime.now())))
+    with open(self.name(self.log_ext[0],self.log_ext[1], self.save_dir), 'r') as f:
+      lines = f.readlines()
+      if len(lines) > 1: ## this has already been sampled before
+        lines = lines[0:1] + ["E: {}\n".format(str(datetime.now()))]
+      else:
+        lines.append("E: {}\n".format(str(datetime.now())))
+    with open(self.name(self.log_ext[0],self.log_ext[1], self.save_dir), 'w') as f:
+      f.writelines(lines)
 
-  def stop_training(self, model, epoch):
+  def stop_training(self, model, epoch, warmup=False):
     ## copy the best model
-    if self.dev_sign * self.res[self.dev_key][-1] < self.dev_sign * self.best_dev_score:
+    if self.dev_sign * self.res[self.dev_key][-1] < self.dev_sign * self.best_dev_score and (not warmup):
       if self.args.greedy_save:
         save_flag = True
       else:

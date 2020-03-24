@@ -16,11 +16,12 @@ walkthroughResults
 """
 def walkthroughResults(path, args_subset=None, 
                        res_subset=['train', 'val', 'test'], 
-                       val_key='val'):
+                       val_key='val',
+                       log='log.log'):
   ## discover args columns of a table
   for tup in os.walk(path):
     for fname in tup[2]:
-      if fname.split('.')[-1] == 'args':
+      if fname.split('_')[-1] == 'args.args':
         all_args = json.load(open(os.path.join(tup[0], fname)))
         if args_subset is None:
           args_subset = all_args
@@ -43,7 +44,7 @@ def walkthroughResults(path, args_subset=None,
   ## discover result columns of the table
   for tup in os.walk(path):
     for fname in tup[2]:
-      if fname.split('.')[-1] == 'json':
+      if fname.split('_')[-1] == 'res.json':
         all_res = json.load(open(os.path.join(tup[0], fname)))
         if res_subset is None:
           res_subset = all_res
@@ -54,7 +55,7 @@ def walkthroughResults(path, args_subset=None,
               all_res[res]
             except:
               warn('res {} not in the res.json file of the model'.format(arg))
-        assert np.array([r == val_key for r in res_subset]).any(), 'res_key not found in res_subset'
+        assert np.array([r == val_key for r in res_subset]).any() or val_key is None, 'res_key not found in res_subset'
         ## assign [] to all res in res_subset
         best_df_dict.update(dict([(res, []) for res in res_subset]))
         all_df_dict.update(dict([(res, []) for res in res_subset]))
@@ -69,11 +70,15 @@ def walkthroughResults(path, args_subset=None,
 
   ## add name to both dictionaries
   best_df_dict.update({'name':[]})
-  all_df_dict.update({'name':[]})  
+  all_df_dict.update({'name':[]})
+
+  ## add status key to both dictionaries
+  best_df_dict.update({'status':[]})
+  all_df_dict.update({'status':[]})  
   
   for tup in os.walk(path):
     for fname in tup[2]:
-      if fname.split('.')[-1] == 'json':
+      if fname.split('_')[-1] == 'res.json':
         ## load raw results
         res = json.load(open(os.path.join(tup[0],fname)))
 
@@ -83,7 +88,10 @@ def walkthroughResults(path, args_subset=None,
         args = json.load(open(os.path.join(tup[0], args_path)))
 
         ## find the best result index
-        min_index = np.argmin(res[val_key])
+        if val_key:
+          min_index = np.argmin(res[val_key])
+        else:
+          min_index =  -1 ## take the last value if val_key is not provided
 
         ## add args to df_dict
         for arg in args_subset:
@@ -93,7 +101,10 @@ def walkthroughResults(path, args_subset=None,
         ## add loss values to df_dict
         for r in res_subset:
           if res.get(r):
-            best_df_dict[r].append(res.get(r)[min_index])
+            try:
+              best_df_dict[r].append(res.get(r)[min_index])
+            except:
+              pdb.set_trace()
           else:
             best_df_dict[r].append(None)
           all_df_dict[r].append(res.get(r))
@@ -106,11 +117,29 @@ def walkthroughResults(path, args_subset=None,
         best_df_dict['name'].append(name)
         all_df_dict['name'].append(name)
 
+        ## add if the experiment is running or not
+        log_file = '_'.join(fname.split('_')[:-1] + [log])
+        log_file = os.path.join(tup[0],log_file)
+        if not os.path.exists(log_file):
+          status = 'DL'
+        else:
+          with open(log_file, 'r') as f:
+            lines = f.readlines()
+            if len(lines) == 1:
+              status = 'started'
+            elif len(lines) == 2:
+              status = 'ended'
+            else:
+              status = 'rendered'
+        best_df_dict['status'].append(status)
+        all_df_dict['status'].append(status)
+            
+
   ## Convert dictionary of results to a dataframe
   best_df = pd.DataFrame(best_df_dict)
   all_df = pd.DataFrame(all_df_dict)
-  best_df = best_df[['name'] + list(args_subset) + ['epoch'] + list(res_subset)]
-  all_df = all_df[['name'] + list(args_subset) + ['epoch'] + list(res_subset)]
+  best_df = best_df[['name'] + list(args_subset) + ['epoch'] + list(res_subset) + ['status']]
+  all_df = all_df[['name'] + list(args_subset) + ['epoch'] + list(res_subset) + ['status']]
   return best_df, all_df
 
 
