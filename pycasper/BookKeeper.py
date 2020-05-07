@@ -1,6 +1,7 @@
 import pickle as pkl
 import json
 import os
+import sys
 from datetime import datetime
 from tqdm import tqdm
 import copy
@@ -8,6 +9,8 @@ import random
 import numpy as np
 from pathlib import Path
 import argparse
+import argunparse
+from .argsUtils import get_args_update_dict
 import warnings
 
 from prettytable import PrettyTable
@@ -74,6 +77,7 @@ class BookKeeper():
                weights_ext='weights.p',
                res_ext='res.json',
                log_ext='log.log',
+               script_ext='script.sh',
                args_dict_update={},
                res={'train':[], 'dev':[], 'test':[]},
                tensorboard=None,
@@ -88,7 +92,8 @@ class BookKeeper():
     self.weights_ext = weights_ext.split('.')
     self.res_ext = res_ext.split('.')
     self.log_ext = log_ext.split('.')
-    
+    self.script_ext = script_ext.split('.')
+
     ## params for saving/notSaving models
     self.stop_count = 0
 
@@ -165,6 +170,9 @@ class BookKeeper():
     
     ## Serialize and save args
     self._save_args()
+
+    ## save script
+    #self._save_script() ## not functional yet. needs some work
 
     ## reinitialize results to empty
     self.res = {key:[] for key in self.res}
@@ -259,6 +267,20 @@ class BookKeeper():
   def _save_args(self):
     args_filepath = self.name(self.args_ext[0], self.args_ext[1], self.save_dir)
     json.dump(self.args.__dict__, open(args_filepath, 'w'))
+
+  def _save_script(self):
+    '''
+    Not functional 
+    '''
+    args_filepath = self.name(self.script_ext[0], self.script_ext[1], self.save_dir)
+    unparser = argunparse.ArgumentUnparser()
+    options = get_args_update_dict(self.args)#self.args.__dict__
+    args = {}
+    script = unparser.unparse_to_list(*args, **options)
+    script = ['python', sys.argv[0]] + script
+    script = ' '.join(script)
+    with open(args_filepath, 'w') as fp:
+      fp.writelines(script)
 
   def _load_model(self, model):
     weights_path = self.name(self.weights_ext[0], self.weights_ext[1], self.save_dir)
