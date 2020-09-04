@@ -104,3 +104,22 @@ class CustomTensor(torch.Tensor):
      
     return CustomTensor(output.contiguous().view(new_shape))
 
+class some_grad():
+  '''
+  removes the requires grad requirement for a list of modules, could be useful for models like GANs or to calculate perceptual losses
+  Assumption: Input modules all have requires_grad = True, as it wont be able to return the requires_grad flags for each parameter
+  '''
+  def __init__(self, modules):
+    if not isinstance(modules, (list, tuple)):
+      self.modules = [modules]
+    else:
+      self.modules = modules
+  
+  def __enter__(self):
+    for m in self.modules:
+      m.requires_grad_(False)
+      
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    for idx, m in enumerate(self.modules):
+      m.requires_grad_(True)
+      

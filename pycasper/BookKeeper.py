@@ -97,6 +97,9 @@ class BookKeeper():
     ## params for saving/notSaving models
     self.stop_count = 0
 
+    ## set seed
+    self._set_seed() 
+    
     ## init empty results
     self.res = res
     if 'dev_key' in args:
@@ -106,6 +109,12 @@ class BookKeeper():
       self.dev_key = 'dev'
       self.dev_sign = 1
     self.best_dev_score = np.inf * self.dev_sign
+
+    ## min epochs of early stopping
+    if 'min_epochs' in args:
+      self.min_epochs = args.min_epochs
+    else:
+      self.min_epochs = 0
     
     self.load_pretrained_model = load_pretrained_model
     
@@ -140,8 +149,6 @@ class BookKeeper():
     else:
       self.tensorboard = None
 
-    self._set_seed()
-
   def _set_seed(self):
     ## seed numpy and torch
     random.seed(self.args.seed)
@@ -149,8 +156,9 @@ class BookKeeper():
     torch.manual_seed(self.args.seed)
     torch.cuda.manual_seed_all(self.args.seed)
     torch.cuda.manual_seed(self.args.seed)
-    #torch.backends.cudnn.deterministic = True
-    #torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    os.environ['PYTHONHASHSEED'] = str(self.args.seed)
     
   '''
   Stuff to do for a new experiment
@@ -235,8 +243,15 @@ class BookKeeper():
     table = PrettyTable([''] + key_order)
     table_str = ['loss'] + [fmt.format(self.res[key][-1]) for key in key_order] ## loss
     table.add_row(table_str)
+    def get_metric(key, metric):
+      value = self.res.get('{}_{}'.format(key, metric))
+      if value is None:
+        return value
+      else:
+        return fmt.format(value[-1])
+      
     for metric in metric_order:
-      table_str = [metric] + [fmt.format(self.res['{}_{}'.format(key, metric)][-1]) for key in key_order]
+      table_str = [metric] + [get_metric(key, metric) for key in key_order]
       table.add_row(table_str)
     
     if isinstance(lr, list):
@@ -345,7 +360,7 @@ class BookKeeper():
       self._save_model(self.best_model)
 
     ## early_stopping
-    if self.args.early_stopping and len(self.res['train'])>=2 and not self.args.overfit:
+    if self.args.early_stopping and len(self.res['train'])>=2 and not self.args.overfit and epoch > self.min_epochs:
       if (self.dev_sign*(self.res[self.dev_key][-2] - self.args.eps) < self.dev_sign * self.res[self.dev_key][-1]):
         self.stop_count += 1
       else:

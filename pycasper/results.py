@@ -5,6 +5,26 @@ import pandas as pd
 import numpy as np
 from warnings import warn
 
+def walklevel(path, depth = 1):
+    """It works just like os.walk, but you can pass it a level parameter
+       that indicates how deep the recursion will go.
+       If depth is -1 (or less than 0), the full depth is walked.
+    """
+    # if depth is negative, just walk
+    if depth < 0:
+        for root, dirs, files in os.walk(path):
+            yield root, dirs, files
+
+    # path.count works because is a file has a "/" it will show up in the list
+    # as a ":"
+    path = path.rstrip(os.path.sep)
+    num_sep = path.count(os.path.sep)
+    for root, dirs, files in os.walk(path):
+        yield root, dirs, files
+        num_sep_this = root.count(os.path.sep)
+        if num_sep + depth <= num_sep_this:
+            del dirs[:]
+
 """
 walkthroughResults
 
@@ -17,7 +37,8 @@ walkthroughResults
 def walkthroughResults(path, args_subset=None, 
                        res_subset=['train', 'val', 'test'], 
                        val_key='val',
-                       log='log.log'):
+                       log='log.log',
+                       depth=-1):
   if isinstance(path, str):
     paths = [path]
   else:
@@ -25,7 +46,7 @@ def walkthroughResults(path, args_subset=None,
     
   ## discover args columns of a table
   for path in paths:
-    for tup in os.walk(path):
+    for tup in walklevel(path, depth):
       for fname in tup[2]:
         if fname.split('_')[-1] == 'args.args':
           try:
@@ -52,7 +73,7 @@ def walkthroughResults(path, args_subset=None,
 
   ## discover result columns of the table
   for path in paths:
-    for tup in os.walk(path):
+    for tup in walklevel(path, depth):
       for fname in tup[2]:
         if fname.split('_')[-1] == 'res.json':
           all_res = json.load(open(os.path.join(tup[0], fname)))
@@ -88,7 +109,7 @@ def walkthroughResults(path, args_subset=None,
   all_df_dict.update({'status':[]})  
 
   for path in paths:
-    for tup in os.walk(path):
+    for tup in walklevel(path, depth):
       for fname in tup[2]:
         if fname.split('_')[-1] == 'res.json':
           ## load raw results
@@ -157,7 +178,8 @@ def walkthroughResults(path, args_subset=None,
   return best_df, all_df
 
 def walkthroughMetrics(path, args_subset=None, 
-                       res_subset=['train', 'val', 'test']):
+                       res_subset=['train', 'val', 'test'],
+                       depth=-1):
   if isinstance(path, str):
     paths = [path]
   else:
@@ -165,7 +187,7 @@ def walkthroughMetrics(path, args_subset=None,
     
   res_list = []
   for path in paths:
-    for tup in os.walk(path):
+    for tup in walklevel(path, depth):
       for fname in tup[2]:
         if fname.split('_')[-1] == 'cummMetrics.json':
           ## load res
