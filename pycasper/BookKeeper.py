@@ -297,12 +297,19 @@ class BookKeeper():
     with open(args_filepath, 'w') as fp:
       fp.writelines(script)
 
-  def _load_model(self, model):
+  def _load_model(self, model, map_location=torch.device('cpu')):
     weights_path = self.name(self.weights_ext[0], self.weights_ext[1], self.save_dir)
-    if isinstance(model, torch.nn.DataParallel):
-      model.module.load_state_dict(pkl.load(open(weights_path, 'rb')))
+    if os.path.exists(weights_path):
+      try:
+        weights = torch.load(weights_path, map_location=map_location)
+      except:
+        weights = pkl.load(open(weights_path, 'rb'))
+      if isinstance(model, torch.nn.DataParallel):
+        model.module.load_state_dict(weights)
+      else:
+        model.load_state_dict(weights)
     else:
-      model.load_state_dict(pkl.load(open(weights_path, 'rb')))
+      warnings.warn('Weight file not found! Initializing randomly')
 
   @staticmethod
   def load_pretrained_model(model, path2model):
@@ -311,9 +318,10 @@ class BookKeeper():
     
   def _save_model(self, model_state_dict):
     weights_path = self.name(self.weights_ext[0], self.weights_ext[1], self.save_dir)
-    f = open(weights_path, 'wb') 
-    pkl.dump(model_state_dict, f)
-    f.close()
+    torch.save(model_state_dict, weights_path)
+    # f = open(weights_path, 'wb') 
+    # pkl.dump(model_state_dict, f)
+    # f.close()
 
   def _copy_best_model(self, model):
     if isinstance(model, torch.nn.DataParallel):

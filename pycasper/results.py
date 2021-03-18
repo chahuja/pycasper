@@ -103,6 +103,10 @@ def walkthroughResults(path, args_subset=None,
   ## add name to both dictionaries
   best_df_dict.update({'name':[]})
   all_df_dict.update({'name':[]})
+    
+  ## add new save directory to both dictionaries
+  best_df_dict.update({'new_save_dir':[]})
+  all_df_dict.update({'new_save_dir':[]})  
 
   ## add status key to both dictionaries
   best_df_dict.update({'status':[]})
@@ -151,6 +155,10 @@ def walkthroughResults(path, args_subset=None,
           ## add name to dict
           best_df_dict['name'].append(name)
           all_df_dict['name'].append(name)
+            
+          ## add new_save_dir to dict
+          best_df_dict['new_save_dir'].append(tup[0])
+          all_df_dict['new_save_dir'].append(tup[0])
 
           ## add if the experiment is running or not
           log_file = '_'.join(fname.split('_')[:-1] + [log])
@@ -173,8 +181,8 @@ def walkthroughResults(path, args_subset=None,
   ## Convert dictionary of results to a dataframe
   best_df = pd.DataFrame(best_df_dict)
   all_df = pd.DataFrame(all_df_dict)
-  best_df = best_df[['name'] + list(args_subset) + ['epoch'] + list(res_subset) + ['status']]
-  all_df = all_df[['name'] + list(args_subset) + ['epoch'] + list(res_subset) + ['status']]
+  best_df = best_df[['name', 'new_save_dir'] + list(args_subset) + ['epoch'] + list(res_subset) + ['status']]
+  all_df = all_df[['name', 'new_save_dir'] + list(args_subset) + ['epoch'] + list(res_subset) + ['status']]
   return best_df, all_df
 
 def walkthroughMetrics(path, args_subset=None, 
