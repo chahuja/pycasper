@@ -119,7 +119,8 @@ class BookKeeper():
     self.load_pretrained_model = load_pretrained_model
     
     if self.args.load:
-      if os.path.isfile(self.args.load):
+      #if os.path.isfile(self.args.load):
+      try:
         ## update the save_dir if the files have moved
         self.save_dir = Path(args.load).parent.as_posix()
 
@@ -128,7 +129,9 @@ class BookKeeper():
 
         ## load args
         self._load_args(args_dict_update)
-
+      except:
+        warnings.warn('Files not found: {}'.format(self.args.load))
+        
       # if not self.load_pretrained_model:
       #   ## Serialize and save args
       #   self._save_args()

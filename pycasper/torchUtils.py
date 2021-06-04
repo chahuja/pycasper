@@ -123,3 +123,17 @@ class some_grad():
     for idx, m in enumerate(self.modules):
       m.requires_grad_(True)
       
+
+class non_deterministic():
+  '''
+  sets torch.set_deterministic() to False for some statements
+  '''
+  def __init__(self):
+    self.deterministic_flag = torch.is_deterministic()
+  
+  def __enter__(self):
+    torch.set_deterministic(False)
+      
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    torch.set_deterministic(self.deterministic_flag)
+      
